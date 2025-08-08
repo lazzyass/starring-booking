@@ -1,0 +1,98 @@
+.booking-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 15px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.logo-section {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.logo-section img {
+  width: 70px;
+  margin-bottom: 8px;
+}
+
+.logo-section h1 {
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.logo-section p {
+  color: #555;
+  font-size: 14px;
+}
+
+.form-card {
+  background: #fff;
+  padding: 25px;
+  border-radius: 20px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 400px;
+}
+
+.form-card h2 {
+  margin-bottom: 15px;
+  font-size: 20px;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+textarea {
+  min-height: 80px;
+}
+
+.option-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.option {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.option.selected {
+  background: linear-gradient(90deg, #9b5de5, #f15bb5);
+  color: white;
+  border: none;
+}
+
+.next-btn,
+.pay-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  background: linear-gradient(90deg, #9b5de5, #f15bb5);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.next-btn:hover,
+.pay-btn:hover {
+  transform: scale(1.02);
+}
