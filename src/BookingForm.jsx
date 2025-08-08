@@ -25,7 +25,7 @@ export default function BookingForm() {
     }
 
     const url =
-      "https://script.google.com/macros/s/AKfycbwygVVmxSFIVGexnahBQpIcviyD2OM34kuepMPD5TJRmfc1w_Pa-XgZ1Z-_yIOMTmQT/exec";
+      "https://script.google.com/macros/s/AKfycbw2IxgZKpenhE44DAKHoLgbotfnQF0nNPBhk-fp4OxeYcS0VWwNqDC5cVVDUkLoQKYIHw/exec";
 
     // Create a hidden iframe target so the page doesn't navigate
     const iframe = document.createElement("iframe");
