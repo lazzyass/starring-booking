@@ -3,12 +3,25 @@ import "./BookingForm.css";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+/* =========================
+   CONFIG
+   ========================= */
 const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbw2IxgZKpenhE44DAKHoLgbotfnQF0nNPBhk-fp4OxeYcS0VWwNqDC5cVVDUkLoQKYIHw/exec";
 
+// Toggle this to false to enable live Razorpay flow
+const MOCK_PAYMENT_MODE = true; // <- per your ask (3s mock)
+
+// INR in paise (₹1 = 100)
+const PRICE_MAP = {
+  "phone-basic": 99900,    // ₹999
+  "phone-pro": 199900,     // ₹1999
+  "camera-basic": 199900,  // ₹1999
+  "camera-pro": 299900,    // ₹2999
+};
+
 export default function BookingForm() {
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -22,11 +35,10 @@ export default function BookingForm() {
     timeSlot: "",
   });
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) =>
+    setFormData((s) => ({ ...s, [e.target.name]: e.target.value }));
 
-  const handleNext = () => {
+  const goNext = () => {
     if (step === 1 && (!formData.name || !formData.email || !formData.phone)) {
       toast.error("Please fill in all your details.");
       return;
@@ -35,37 +47,52 @@ export default function BookingForm() {
       toast.error("Please select device type and edit type.");
       return;
     }
-    setStep(step + 1);
+    setStep((s) => s + 1);
   };
 
-  const handleBooking = async () => {
-  if (!formData.date || !formData.timeSlot) {
-    toast.error("Please select date and time slot.");
-    return;
-  }
-  setProcessing(true);
+  async function handleBooking() {
+    // Basic guards (unchanged beyond requirements)
+    if (!formData.deviceType || !formData.editType) {
+      toast.error("Please complete the previous step (device & edit type).");
+      return;
+    }
+    if (!formData.date || !formData.timeSlot) {
+      toast.error("Please choose a date and time slot.");
+      return;
+    }
 
-  setTimeout(async () => {
-    try {
-      // Build fields EXACTLY as your Apps Script expects
-      const payload = new URLSearchParams({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        category: `${formData.deviceType}-${formData.editType}`.toLowerCase(), // e.g. "camera-pro"
-        date: formData.date,
-        time: formData.timeSlot,             // map to "time"
-        requirements: formData.idea || "",
-      });
+    const categoryKey = `${formData.deviceType}-${formData.editType}`.toLowerCase();
+    const amount = PRICE_MAP[categoryKey];
+    if (!amount) {
+      toast.error("Invalid category selected.");
+      return;
+    }
 
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: "POST",
-        body: payload,
-      });
+    // ---- MOCK PAYMENT MODE (3s delay, then save to Google Sheet) ----
+    if (MOCK_PAYMENT_MODE) {
+      try {
+        setProcessing(true);
 
-      if (response.ok) {
-        toast.success("Booking Confirmed! ✨");
-        // reset
+        // 3s fake gateway animation
+        await new Promise((res) => setTimeout(res, 3000));
+
+        // Save booking directly to your Google Sheet (same keys your script expects)
+        const payload = new URLSearchParams({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          category: categoryKey,
+          date: formData.date,
+          time: formData.timeSlot,
+          requirements: formData.idea || "",
+        });
+
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: "POST",
+          body: payload,
+        });
+
+        toast.success("Payment successful & booking saved! 🎉");
         setFormData({
           name: "",
           email: "",
@@ -77,17 +104,112 @@ export default function BookingForm() {
           timeSlot: "",
         });
         setStep(1);
-      } else {
-        toast.error("Error saving booking. Please try again.");
+      } catch (e) {
+        console.error(e);
+        toast.error("Network error. Please try again.");
+      } finally {
+        setProcessing(false);
       }
-    } catch (error) {
-      toast.error("Network error. Please try again.");
-    } finally {
-      setProcessing(false);
+      return;
     }
-  }, 3000);
-};
 
+    // ---- LIVE RAZORPAY FLOW (kept intact) ----
+    try {
+      setProcessing(true);
+
+      // 1) Create order via Apps Script
+      const createRes = await fetch(`${GOOGLE_SCRIPT_URL}?action=createOrder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount, // paise
+          receipt: `starring_${Date.now()}`,
+        }),
+      }).then((r) => r.json());
+
+      if (!createRes?.ok) {
+        setProcessing(false);
+        toast.error("Could not start payment. Please try again.");
+        return;
+      }
+
+      const { order, key_id } = createRes;
+
+      const options = {
+        key: key_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Starring",
+        description: `${formData.deviceType} • ${formData.editType}`,
+        order_id: order.id,
+        prefill: {
+          name: formData.name,
+          email: formData.email,
+          contact: formData.phone,
+        },
+        theme: { color: "#9B5DE5" },
+
+        // 2) On success → verify & write to Sheet
+        handler: async function (response) {
+          const bookingPayload = {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            category: categoryKey,           // sheet expects "category"
+            date: formData.date,
+            time: formData.timeSlot,         // sheet expects "time"
+            requirements: formData.idea || "",
+          };
+
+          const verifyRes = await fetch(`${GOOGLE_SCRIPT_URL}?action=verifyPayment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              booking: bookingPayload,
+            }),
+          }).then((r) => r.json());
+
+          setProcessing(false);
+
+          if (verifyRes?.ok) {
+            toast.success("Payment successful & booking saved! 🎉");
+            setFormData({
+              name: "",
+              email: "",
+              phone: "",
+              idea: "",
+              deviceType: "",
+              editType: "",
+              date: "",
+              timeSlot: "",
+            });
+            setStep(1);
+          } else {
+            toast.error("Payment verification failed — booking not saved.");
+          }
+        },
+
+        modal: {
+          ondismiss: function () {
+            setProcessing(false);
+            toast("Payment cancelled.");
+          },
+        },
+      };
+
+      // 3) Open Razorpay checkout
+      // eslint-disable-next-line no-undef
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      console.error(err);
+      setProcessing(false);
+      toast.error("Network error. Please try again.");
+    }
+  }
 
   return (
     <div className="booking-container">
@@ -129,7 +251,7 @@ export default function BookingForm() {
               value={formData.idea}
               onChange={handleChange}
             />
-            <button className="next-btn" onClick={handleNext}>
+            <button className="next-btn" onClick={goNext}>
               Continue →
             </button>
           </>
@@ -138,14 +260,13 @@ export default function BookingForm() {
         {step === 2 && (
           <>
             <h2>Step 2: Shoot Preferences</h2>
+
             <div className="option-group">
               <label
                 className={
                   formData.deviceType === "Phone" ? "option selected" : "option"
                 }
-                onClick={() =>
-                  setFormData({ ...formData, deviceType: "Phone" })
-                }
+                onClick={() => setFormData((s) => ({ ...s, deviceType: "Phone" }))}
               >
                 Phone
               </label>
@@ -153,9 +274,7 @@ export default function BookingForm() {
                 className={
                   formData.deviceType === "Camera" ? "option selected" : "option"
                 }
-                onClick={() =>
-                  setFormData({ ...formData, deviceType: "Camera" })
-                }
+                onClick={() => setFormData((s) => ({ ...s, deviceType: "Camera" }))}
               >
                 Camera
               </label>
@@ -166,9 +285,7 @@ export default function BookingForm() {
                 className={
                   formData.editType === "Basic" ? "option selected" : "option"
                 }
-                onClick={() =>
-                  setFormData({ ...formData, editType: "Basic" })
-                }
+                onClick={() => setFormData((s) => ({ ...s, editType: "Basic" }))}
               >
                 Basic Edit
               </label>
@@ -176,15 +293,13 @@ export default function BookingForm() {
                 className={
                   formData.editType === "Pro" ? "option selected" : "option"
                 }
-                onClick={() =>
-                  setFormData({ ...formData, editType: "Pro" })
-                }
+                onClick={() => setFormData((s) => ({ ...s, editType: "Pro" }))}
               >
                 Pro Edit
               </label>
             </div>
 
-            <button className="next-btn" onClick={handleNext}>
+            <button className="next-btn" onClick={goNext}>
               Continue →
             </button>
           </>
@@ -210,6 +325,7 @@ export default function BookingForm() {
               <option value="02:00 PM">02:00 PM</option>
               <option value="04:00 PM">04:00 PM</option>
             </select>
+
             <button
               className="pay-btn"
               onClick={handleBooking}
