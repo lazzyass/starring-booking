@@ -39,42 +39,55 @@ export default function BookingForm() {
   };
 
   const handleBooking = async () => {
-    if (!formData.date || !formData.timeSlot) {
-      toast.error("Please select date and time slot.");
-      return;
-    }
-    setProcessing(true);
+  if (!formData.date || !formData.timeSlot) {
+    toast.error("Please select date and time slot.");
+    return;
+  }
+  setProcessing(true);
 
-    // Fake 3-5s processing animation
-    setTimeout(async () => {
-      try {
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-          method: "POST",
-          body: new URLSearchParams(formData),
+  setTimeout(async () => {
+    try {
+      // Build fields EXACTLY as your Apps Script expects
+      const payload = new URLSearchParams({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        category: `${formData.deviceType}-${formData.editType}`.toLowerCase(), // e.g. "camera-pro"
+        date: formData.date,
+        time: formData.timeSlot,             // map to "time"
+        requirements: formData.idea || "",
+      });
+
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        body: payload,
+      });
+
+      if (response.ok) {
+        toast.success("Booking Confirmed! ✨");
+        // reset
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          idea: "",
+          deviceType: "",
+          editType: "",
+          date: "",
+          timeSlot: "",
         });
-        if (response.ok) {
-          toast.success("Booking Confirmed! ✨");
-          setFormData({
-            name: "",
-            email: "",
-            phone: "",
-            idea: "",
-            deviceType: "",
-            editType: "",
-            date: "",
-            timeSlot: "",
-          });
-          setStep(1);
-        } else {
-          toast.error("Error saving booking. Please try again.");
-        }
-      } catch (error) {
-        toast.error("Network error. Please try again.");
-      } finally {
-        setProcessing(false);
+        setStep(1);
+      } else {
+        toast.error("Error saving booking. Please try again.");
       }
-    }, 3000);
-  };
+    } catch (error) {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setProcessing(false);
+    }
+  }, 3000);
+};
+
 
   return (
     <div className="booking-container">
