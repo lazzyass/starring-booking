@@ -19,6 +19,23 @@ const PRICE_MAP = {
   "camera-basic": 349900,  // ₹3499
   "camera-pro": 499900,    // ₹4999
 };
+// Business hours (24h format). Edit as needed.
+const BUSINESS_HOURS = { start: 0, end: 23 }; // 0 → 23 == 12 AM → 11 PM inclusive
+
+function to12h(h) {
+  const hour = ((h + 11) % 12) + 1; // 0->12, 13->1, etc.
+  const ampm = h < 12 ? "AM" : "PM";
+  const padded = String(hour).padStart(1, "0");
+  return `${padded}:00 ${ampm}`;
+}
+
+function generateHourlySlots({ start, end }) {
+  const slots = [];
+  for (let h = start; h <= end; h++) {
+    slots.push(to12h(h));
+  }
+  return slots;
+}
 
 export default function BookingForm() {
   const [step, setStep] = useState(1);
@@ -320,11 +337,11 @@ export default function BookingForm() {
               onChange={handleChange}
             >
               <option value="">Select Time Slot</option>
-              <option value="10:00 AM">10:00 AM</option>
-              <option value="12:00 PM">12:00 PM</option>
-              <option value="02:00 PM">02:00 PM</option>
-              <option value="04:00 PM">04:00 PM</option>
+              {generateHourlySlots(BUSINESS_HOURS).map((slot) => (
+                <option key={slot} value={slot}>{slot}</option>
+              ))}
             </select>
+
 
             <button
               className="pay-btn"
