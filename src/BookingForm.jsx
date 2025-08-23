@@ -7,10 +7,10 @@ import "react-toastify/dist/ReactToastify.css";
    CONFIG
    ========================= */
 const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbw2IxgZKpenhE44DAKHoLgbotfnQF0nNPBhk-fp4OxeYcS0VWwNqDC5cVVDUkLoQKYIHw/exec";
+  "https://script.google.com/macros/s/AKfycby3_vCUVKoNykDZDJ5im-vAfv3E5mei4ND6MuOiGjyNOqk03nnjhL5yDZh3vI4NjhNNuA/exec";
 
 // Toggle this to false to enable live Razorpay flow
-const MOCK_PAYMENT_MODE = true; // <- per your ask (3s mock)
+const MOCK_PAYMENT_MODE = false; // <- per your ask (3s mock)
 
 // INR in paise (₹1 = 100)
 const PRICE_MAP = {
@@ -137,12 +137,13 @@ export default function BookingForm() {
       // 1) Create order via Apps Script
       const createRes = await fetch(`${GOOGLE_SCRIPT_URL}?action=createOrder`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount, // paise
-          receipt: `starring_${Date.now()}`,
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: new URLSearchParams({
+        amount: String(amount),               // paise
+        receipt: `starring_${Date.now()}`,
         }),
-      }).then((r) => r.json());
+      }).then(r => r.json());
+
 
       if (!createRes?.ok) {
         setProcessing(false);
@@ -180,14 +181,22 @@ export default function BookingForm() {
 
           const verifyRes = await fetch(`${GOOGLE_SCRIPT_URL}?action=verifyPayment`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-              booking: bookingPayload,
-            }),
-          }).then((r) => r.json());
+            headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+            body: new URLSearchParams({
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+    // flatten booking so GAS can read as parameters
+            name: bookingPayload.name,
+            email: bookingPayload.email,
+            phone: bookingPayload.phone,
+            category: bookingPayload.category,
+            date: bookingPayload.date,
+            time: bookingPayload.time,
+            requirements: bookingPayload.requirements || "",
+          }),
+        }).then(r => r.json());
+
 
           setProcessing(false);
 
