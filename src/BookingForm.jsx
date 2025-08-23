@@ -15,9 +15,9 @@ const MOCK_PAYMENT_MODE = true; // <- per your ask (3s mock)
 // INR in paise (₹1 = 100)
 const PRICE_MAP = {
   "phone-basic": 99900,    // ₹999
-  "phone-pro": 199900,     // ₹1999
-  "camera-basic": 199900,  // ₹1999
-  "camera-pro": 299900,    // ₹2999
+  "phone-pro": 219900,     // ₹2199
+  "camera-basic": 349900,  // ₹3499
+  "camera-pro": 499900,    // ₹4999
 };
 
 export default function BookingForm() {
