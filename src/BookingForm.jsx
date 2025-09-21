@@ -50,6 +50,7 @@ export default function BookingForm() {
     editType: "",
     date: "",
     timeSlot: "",
+    shootAddress: "",
   });
 
   const handleChange = (e) =>
@@ -77,6 +78,22 @@ export default function BookingForm() {
       toast.error("Please choose a date and time slot.");
       return;
     }
+    const today = new Date().toISOString().split("T")[0];
+    if (formData.date < today) {
+      toast.error("Past dates cannot be booked.");
+      return;
+    }
+    // Extra guard: Prevent booking past time slots if date is today
+    if (formData.date === today) {
+      const currentHour = new Date().getHours();
+      const selectedHour = parseInt(formData.timeSlot.split(":")[0], 10);
+
+      if (selectedHour <= currentHour) {
+        toast.error("This time slot has already passed. Please select a future slot.");
+        return;
+      }
+    }
+
 
     const categoryKey = `${formData.deviceType}-${formData.editType}`.toLowerCase();
     const amount = PRICE_MAP[categoryKey];
@@ -101,7 +118,8 @@ export default function BookingForm() {
           category: categoryKey,
           date: formData.date,
           time: formData.timeSlot,
-          requirements: formData.idea || "",
+          requirements: formData.idea,
+          shootAddress: formData.shootAddress || "",
         });
 
         await fetch(GOOGLE_SCRIPT_URL, {
@@ -324,6 +342,19 @@ export default function BookingForm() {
                 Pro Edit
               </label>
             </div>
+            {/* Order Summary (only shows when both selections made) */}
+            {formData.deviceType && formData.editType && (
+              <div className="order-summary">
+                <h3>📸 Order Summary</h3>
+                <p>Device: {formData.deviceType}</p>
+                <p>Edit Type: {formData.editType}</p>
+                <p className="price">
+                  Price: ₹ 
+                  {(PRICE_MAP[`${formData.deviceType}-${formData.editType}`.toLowerCase()]/100
+                  ).toFixed(2)}
+                </p>
+              </div>
+            )}
 
             <button className="next-btn" onClick={goNext}>
               Continue →
@@ -337,8 +368,10 @@ export default function BookingForm() {
             <input
               type="date"
               name="date"
+              min={new Date().toISOString().split("T")[0]}   // 👈 prevents past dates
               value={formData.date}
               onChange={handleChange}
+              required
             />
             <select
               name="timeSlot"
@@ -346,10 +379,41 @@ export default function BookingForm() {
               onChange={handleChange}
             >
               <option value="">Select Time Slot</option>
-              {generateHourlySlots(BUSINESS_HOURS).map((slot) => (
-                <option key={slot} value={slot}>{slot}</option>
-              ))}
+              {generateHourlySlots(BUSINESS_HOURS).map((slot) => {
+                const today = new Date().toISOString().split("T")[0];
+                const currentHour = new Date().getHours();
+
+                // Parse slot string (e.g., "9:00 AM" or "3:00 PM") to 24-hour format
+                const [slotHourStr, rest] = slot.split(":");
+                const slotHourNum = parseInt(slotHourStr, 10);
+                const ampm = rest.trim().split(" ")[1];
+                let slotHour24 = slotHourNum;
+                if (ampm === "PM" && slotHourNum !== 12) slotHour24 += 12;
+                if (ampm === "AM" && slotHourNum === 12) slotHour24 = 0;
+
+                const isPast =
+                  formData.date === today && slotHour24 <= currentHour;
+
+                return (
+                  <React.Fragment key={slot}>
+                    <option value={slot} disabled={isPast}>
+                      {slot} {isPast ? "(unavailable)" : ""}
+                    </option>
+                  </React.Fragment>
+                );
+              })}
+
             </select>
+            <label htmlFor="shoot-address">🌟 Where's the Spotlight?</label>
+              <input
+                type="text"
+                id="shoot-address"
+                name="shootAddress"
+                placeholder="Studio, rooftop, café… where are we shooting?"
+                value={formData.shootAddress}
+                onChange={handleChange}
+                required
+              />
 
 
             <button

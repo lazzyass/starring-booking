@@ -96,3 +96,9 @@ textarea {
 .pay-btn:hover {
   transform: scale(1.02);
 }
+
+.order-summary p.price {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #222;
+}

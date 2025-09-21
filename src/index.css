@@ -1,4 +1,44 @@
+/* Existing body styles */
 body {
   margin: 0;
   background-color: #fefaff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ===============================
+   Global Input & Form Styles
+   =============================== */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 14px;
+  background-color: #fff;
+  transition: border-color 0.2s ease-in-out;
+}
+
+/* Highlight input when focused */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #6c63ff; /* brand accent color */
+  box-shadow: 0 0 5px rgba(108, 99, 255, 0.3);
+}
+
+/* Label styling for consistency */
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #333;
 }
